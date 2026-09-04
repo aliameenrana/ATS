@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ats-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-20",
+
+  // nodejs_compat needed for mammoth (DOCX parsing) and Buffer usage
+  // inside unpdf's dependency chain.
+  "compatibility_flags": ["nodejs_compat"],
+
+  "observability": {
+    "enabled": true
+  },
+
+  // MCP-only tool. Reached ONLY via aliameen.com's Pages service binding
+  // (see functions/ats/api/[[path]].ts in the website repo) -- no public
+  // workers.dev URL. This is deliberate: the tool has no UI and no reason
+  // to be reachable except through the one documented same-origin path
+  // (and the shared-secret header checked in src/auth.ts, in case that
+  // proxy path is ever bypassed).
+  "workers_dev": false,
+
+  // Submissions (parsed resume text + score + suggestions, kept
+  // indefinitely -- see src/db.ts) and a rolling rate-limit counter.
+  // Provision with: npx wrangler d1 create ats-db
+  // Then apply migrations/0001_ats_schema.sql via:
+  //   npx wrangler d1 execute ats-db --remote --file=migrations/0001_ats_schema.sql
+  "d1_databases": [
+    { "binding": "ATS_DB", "database_name": "ats-db", "database_id": "e3474bbd-4a52-48fc-b865-92622206238e" }
+  ]
+
+  // SECRETS (never committed, not listed under "vars"):
+  //   GROQ_API_KEY     -- npx wrangler secret put GROQ_API_KEY
+  //     (qualitative-suggestions pass; https://console.groq.com)
+  //   ATS_SHARED_SECRET -- npx wrangler secret put ATS_SHARED_SECRET
+  //     (must match the same secret set on the aliameen-website Pages
+  //      project's functions/ats/api/[[path]].ts proxy -- defense in
+  //      depth in case the Worker's URL is ever guessed/exposed despite
+  //      workers_dev:false; generate with `openssl rand -base64 32`)
+}
