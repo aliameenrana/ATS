@@ -34,7 +34,10 @@ export async function checkAndRecordRateLimit(db: D1Database, clientId: string):
 // Best-effort caller identifier: Cloudflare's connecting IP. This is an
 // MCP tool with no accounts, so it's the only signal available -- good
 // enough to blunt accidental hammering or a single bad actor, not meant
-// as a strong identity.
+// as a strong identity. Cloudflare's edge reliably sets this header in
+// production, so the "unknown" fallback bucket (shared across any caller
+// missing it, e.g. local dev without the header) is intentional, not a
+// gap being papered over.
 export function clientIdFromRequest(request: Request): string {
   return request.headers.get("CF-Connecting-IP") ?? "unknown";
 }

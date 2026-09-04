@@ -52,9 +52,11 @@ export async function parseResume(bytes: Uint8Array, declaredMimeType?: string):
       text = new TextDecoder("utf-8").decode(bytes);
     }
   } catch (err) {
-    throw new ResumeParseError(
-      `Could not parse file as ${fileKind}: ${err instanceof Error ? err.message : String(err)}`
-    );
+    // Raw library error text (unpdf/mammoth internals) is logged for our
+    // own visibility but not handed to the caller -- it's unfiltered
+    // internal detail reaching an untrusted client for no benefit to them.
+    console.error(`Resume parse failure (${fileKind}):`, err instanceof Error ? err.message : String(err));
+    throw new ResumeParseError(`Could not parse file as ${fileKind}.`);
   }
 
   text = text.replace(/\r\n/g, "\n").replace(/[ \t]+\n/g, "\n").trim();

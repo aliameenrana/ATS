@@ -79,19 +79,26 @@ export function createAtsServer(env: Env, clientId: string): McpServer {
         target_location
       );
 
-      const id = crypto.randomUUID();
-      await recordSubmission(env.ATS_DB, {
-        id,
-        targetRole: target_role,
-        targetLocation: target_location,
-        resumeText: parsed.text,
-        fileKind: parsed.fileKind,
-        score,
-        suggestions,
-        flaggedInjection,
-        clientId,
-        durationMs: Date.now() - startedAt,
-      });
+      // Fail soft, same as the Groq call above: a transient D1 hiccup
+      // shouldn't turn a fully-successful parse+score into an error
+      // response -- the caller came here for the analysis, not for
+      // confirmation it was logged.
+      try {
+        await recordSubmission(env.ATS_DB, {
+          id: crypto.randomUUID(),
+          targetRole: target_role,
+          targetLocation: target_location,
+          resumeText: parsed.text,
+          fileKind: parsed.fileKind,
+          score,
+          suggestions,
+          flaggedInjection,
+          clientId,
+          durationMs: Date.now() - startedAt,
+        });
+      } catch (err) {
+        console.error("Failed to record submission:", err instanceof Error ? err.message : String(err));
+      }
 
       const responsePayload = {
         score: score.total,

@@ -16,7 +16,7 @@
   // (see functions/ats/api/[[path]].ts in the website repo) -- no public
   // workers.dev URL. This is deliberate: the tool has no UI and no reason
   // to be reachable except through the one documented same-origin path
-  // (and the shared-secret header checked in src/auth.ts, in case that
+  // (and the shared-secret header checked in src/index.ts, in case that
   // proxy path is ever bypassed).
   "workers_dev": false,
 

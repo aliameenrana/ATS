@@ -37,7 +37,11 @@ function scoreParseability(text: string): { score: number; notes: string[] } {
   }
 
   // Unusual bullet/glyph characters that sometimes indicate icon fonts
-  // (common in "designed" resume templates) rendering as garbage.
+  // (common in "designed" resume templates) rendering as garbage. The
+  // regex below is the Unicode Private Use Area range U+E000-U+F8FF (icon
+  // fonts map their glyphs into this range) -- it renders as a bare-looking
+  // hyphen in some terminals/editors, but is not one; verify with a
+  // unicode-aware read if this ever looks wrong again.
   const glyphNoise = (text.match(/[-]/g) || []).length;
   if (glyphNoise > 3) {
     score -= 10;
