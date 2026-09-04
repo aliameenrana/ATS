@@ -107,6 +107,7 @@ export function createAtsServer(env: Env, clientId: string): McpServer {
           section_coverage: score.sectionCoverage,
           keyword_coverage: score.keywordCoverage,
           contact_info: score.contactInfo,
+          content_quality: score.contentQuality,
         },
         notes: score.notes,
         strengths: suggestions?.strengths ?? [],
