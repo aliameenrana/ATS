@@ -10,5 +10,4 @@ export interface Env {
 
   // Secrets (never committed).
   GROQ_API_KEY: string;
-  ATS_SHARED_SECRET: string;
 }

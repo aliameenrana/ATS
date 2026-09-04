@@ -1,13 +1,14 @@
 /**
  * Worker entry point -- LLM-only MCP server for resume/ATS review.
  *
- * No public-facing UI. Reached in production only through
- * aliameen.com's Pages service binding (functions/ats/api/[[path]].ts
- * in the website repo), which is itself the only place ATS_SHARED_SECRET
- * is attached to outgoing requests -- so a client must go through that
- * documented path. workers_dev is off in wrangler.jsonc as the first
- * layer; this shared-secret check is the second, in case that ever
- * changes or the binding is bypassed some other way.
+ * No public-facing UI, but publicly reachable: this is a tool meant to
+ * be discovered and called by any MCP-compatible AI agent (registered in
+ * the MCP registry), not gated behind aliameen.com. Cost/abuse control is
+ * the per-client-minute limiter plus a global 100/day cap (ratelimit.ts),
+ * not an auth secret -- a public tool with no accounts has no identity to
+ * gate on anyway. aliameen.com's Pages service binding
+ * (functions/ats/api/[[path]].ts in the website repo) is one caller among
+ * others, not a required proxy.
  *
  * Route: POST /mcp -- MCP Streamable HTTP transport (single endpoint,
  * per the MCP spec), stateless (sessionIdGenerator: undefined) since
@@ -20,13 +21,6 @@ import { createAtsServer } from "./mcp";
 import { checkAndRecordRateLimit, checkAndRecordDailyLimit, clientIdFromRequest } from "./ratelimit";
 import type { Env } from "./env";
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -36,11 +30,6 @@ export default {
     }
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
-    }
-
-    const provided = request.headers.get("X-ATS-Shared-Secret") ?? "";
-    if (!provided || !timingSafeEqual(provided, env.ATS_SHARED_SECRET)) {
-      return new Response("Unauthorized", { status: 401 });
     }
 
     const clientId = clientIdFromRequest(request);
