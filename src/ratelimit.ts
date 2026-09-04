@@ -7,11 +7,23 @@
 const WINDOW_SECONDS = 60;
 const MAX_REQUESTS_PER_WINDOW = 5;
 
+// Global daily cap, independent of the per-client window above. The
+// per-client limit stops one caller from hammering the endpoint; this
+// stops total worldwide usage (and therefore total Groq spend) from
+// exceeding a fixed budget regardless of how many distinct client IDs an
+// abuser rotates through. Single row keyed by UTC date, so it's a global
+// counter, not per-client.
+const MAX_REQUESTS_PER_DAY = 100;
+
 function currentWindowStart(): string {
   const now = new Date();
   const windowMs = WINDOW_SECONDS * 1000;
   const aligned = new Date(Math.floor(now.getTime() / windowMs) * windowMs);
   return aligned.toISOString();
+}
+
+function currentUtcDate(): string {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
 export async function checkAndRecordRateLimit(db: D1Database, clientId: string): Promise<boolean> {
@@ -29,6 +41,23 @@ export async function checkAndRecordRateLimit(db: D1Database, clientId: string):
     .first<{ request_count: number }>();
 
   return (result?.request_count ?? 0) <= MAX_REQUESTS_PER_WINDOW;
+}
+
+export async function checkAndRecordDailyLimit(db: D1Database): Promise<boolean> {
+  const day = currentUtcDate();
+
+  const result = await db
+    .prepare(
+      `INSERT INTO ats_daily_limits (day, request_count)
+       VALUES (?1, 1)
+       ON CONFLICT(day)
+       DO UPDATE SET request_count = request_count + 1
+       RETURNING request_count`
+    )
+    .bind(day)
+    .first<{ request_count: number }>();
+
+  return (result?.request_count ?? 0) <= MAX_REQUESTS_PER_DAY;
 }
 
 // Best-effort caller identifier: Cloudflare's connecting IP. This is an

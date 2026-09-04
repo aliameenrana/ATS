@@ -17,7 +17,7 @@
 
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createAtsServer } from "./mcp";
-import { checkAndRecordRateLimit, clientIdFromRequest } from "./ratelimit";
+import { checkAndRecordRateLimit, checkAndRecordDailyLimit, clientIdFromRequest } from "./ratelimit";
 import type { Env } from "./env";
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -47,6 +47,11 @@ export default {
     const withinLimit = await checkAndRecordRateLimit(env.ATS_DB, clientId);
     if (!withinLimit) {
       return new Response("Rate limit exceeded. Try again shortly.", { status: 429 });
+    }
+
+    const withinDailyLimit = await checkAndRecordDailyLimit(env.ATS_DB);
+    if (!withinDailyLimit) {
+      return new Response("Daily request limit reached. Try again tomorrow.", { status: 429 });
     }
 
     const server = createAtsServer(env, clientId);
